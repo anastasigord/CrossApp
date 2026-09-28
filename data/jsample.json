@@ -1,0 +1,17 @@
+[
+  { "type": "P", "id": "P-101", "name": "Смартфон Samsung Galaxy A55", "price": 18999.00 },
+  { "type": "C", "id": "C-101", "fullName": "Марія Шевченко", "email": "maria.shevchenko@example.com" },
+  { "type": "P", "id": "P-102", "name": "Планшет Xiaomi Pad 6", "price": 14499.50 },
+  { "type": "C", "id": "C-102", "fullName": "Тарас Кравець", "email": "taras.kravets@example.com" },
+  { "type": "P", "id": "P-103", "name": "Зовнішній SSD 1 ТБ", "price": 3599.00 },
+  { "type": "C", "id": "C-103", "fullName": "Софія Дорошенко", "email": "sofia.doroshenko@example.com" },
+  { "type": "P", "id": "P-104", "name": "Вебкамера Full HD", "price": 2199.00 },
+  { "type": "C", "id": "C-104", "fullName": "Роман Ільченко", "email": "roman.ilchenko@example.com" },
+  { "type": "P", "id": "P-105", "name": "Мікрофон USB", "price": 1750.75 },
+  { "type": "C", "id": "C-105", "fullName": "Вікторія Левченко", "email": "viktoriia.levchenko@example.com" },
+  { "type": "P", "id": "P-106", "name": "", "price": 500 },
+  { "type": "C", "id": "C-106", "fullName": "", "email": "empty.name@example.com" },
+  { "type": "P", "id": "P-107", "name": "Кабель HDMI", "price": -299.99 },
+  { "type": "C", "id": "C-107", "fullName": "Дмитро Бойко", "email": "" },
+  { "type": "Z", "id": "Z-001" }
+]
