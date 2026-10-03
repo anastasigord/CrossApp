@@ -44,5 +44,5 @@ public sealed class OrderLine
         return Create(dto.ProductId, dto.Name, dto.Price, dto.Quantity);
     }
 
-    public override string ToString() => $"{Name} ({ProductId}): {Quantity} x {Price} = {Subtotal}";
+    public override string ToString() => $"{Name} ({ProductId}): {Quantity} x {Price:F2} = {Subtotal:F2}";
 }

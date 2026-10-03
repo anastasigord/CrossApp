@@ -75,6 +75,6 @@ public sealed class Order
     }
 
     public override string ToString() =>
-        $"Замовлення {Id} (клієнт {CustomerId}): рядків {_lines.Count}, сума {Total}, " +
-        $"{(IsConfirmed ? "підтверджене" : "чернетка")}";
+    $"Замовлення {Id} (клієнт {CustomerId}): рядків {_lines.Count}, сума {Total:F2}, " +
+    $"{(IsConfirmed ? "підтверджене" : "чернетка")}";
 }
