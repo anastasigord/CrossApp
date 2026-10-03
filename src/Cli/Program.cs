@@ -1,57 +1,60 @@
-﻿using System.Text;
-using Core.Dto;
+﻿using System;
+using Core.Domain;
 using Core.Import;
 
-Console.OutputEncoding = Encoding.UTF8;
-
-string path = args.Length > 0 ? args[0] : Path.Combine("data", "sample.csv");
-
-if (!File.Exists(path))
-{
-    Console.WriteLine($"Файл не знайдено: {Path.GetFullPath(path)}");
-    return 1;
-}
-
-Console.WriteLine($"Шлях файлу: {path}");
-
-ImportResult<ImportRowDto>? result = Path.GetExtension(path).ToLowerInvariant() switch
-{
-    ".csv" => CsvImporter.Load(path),
-    ".json" => JsonImporter.Load(path),
-    _ => null
-};
-
-if (result is null)
-{
-    Console.WriteLine($"Непідтримуваний формат '{Path.GetExtension(path)}'. Підтримуються .csv та .json");
-    return 1;
-}
-
-int accepted = result.Items.Count;
-int skipped = result.Errors.Count;
-int total = accepted + skipped;
-double percent = total == 0 ? 0 : skipped * 100.0 / total;
-
-Console.WriteLine($"Усього: {total} | Прийнято: {accepted} | Пропущено: {skipped} | Помилок: {percent:F2}%");
+Console.WriteLine("=== Сценарій 1: успіх ===");
+Order order = Order.Create("O-001", "C-100");
+order.AddLine("P-001", "Цемент М400 25кг", 180.50m, 10);
+order.AddLine("P-002", "Пісок", 95m, 3);
+Console.WriteLine(order);
+foreach (var line in order.Lines)
+    Console.WriteLine($"  {line}");
+order.Confirm();
+Console.WriteLine(order);
 Console.WriteLine();
 
-foreach (ImportRowDto row in result.Items.Take(10))
+Console.WriteLine("=== Сценарій 2: порушення інваріантів ===");
+Order draft = Order.Create("O-002", "C-200");
+draft.AddLine("P-003", "Цегла", 12m, 100);
+decimal totalBefore = draft.Total;
+
+TryDo("нульова кількість", () => draft.AddLine("P-004", "Щебінь", 50m, 0));
+TryDo("від'ємна ціна", () => draft.AddLine("P-004", "Щебінь", -50m, 5));
+TryDo("порожній ідентифікатор товару", () => draft.AddLine(" ", "Щебінь", 50m, 5));
+TryDo("порожній ідентифікатор клієнта", () => Order.Create("O-003", " "));
+TryDo("підтвердження порожнього замовлення", () => Order.Create("O-004", "C-300").Confirm());
+TryDo("рядок у підтверджене замовлення", () => order.AddLine("P-005", "Гравій", 70m, 2));
+TryDo("повторне підтвердження", () => order.Confirm());
+
+Console.WriteLine();
+Console.WriteLine($"Після всіх відмов: рядків {draft.Lines.Count}, сума {draft.Total} " +
+                  $"(до спроб було {totalBefore}) — стан не змінився.");
+Console.WriteLine();
+
+Console.WriteLine("=== Сценарій 3: імпорт товарів у замовлення ===");
+var import = JsonImporter.Load("data/jsample.json");
+var outcome = OrderImportMapper.ToOrder(import, "O-IMPORT", "C-100", quantityPerLine: 2);
+
+if (outcome.Order is not null)
 {
-    string text = row switch
+    Console.WriteLine(outcome.Order);
+    foreach (var line in outcome.Order.Lines)
+        Console.WriteLine($"  {line}");
+}
+
+Console.WriteLine($"Не пройшли перевірки: {outcome.Errors.Count}");
+foreach (var err in outcome.Errors)
+    Console.WriteLine($"  {err}");
+
+static void TryDo(string title, Action action)
+{
+    try
     {
-        ProductDto p => $"Товар  | {p.Id,-6} | {p.Name,-28} | {p.Price,10:F2}",
-        CustomerDto c => $"Клієнт | {c.Id,-6} | {c.FullName,-28} | {c.Email}",
-        _ => row.ToString() ?? ""
-    };
-    Console.WriteLine(text);
+        action();
+        Console.WriteLine($"  {title}: виняток НЕ спрацював — інваріант відсутній!");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"  {title}: {ex.GetType().Name} — {ex.Message}");
+    }
 }
-
-if (skipped > 0)
-{
-    Console.WriteLine();
-    Console.WriteLine($"Пропущено рядків: {skipped}");
-    foreach (string error in result.Errors)
-        Console.WriteLine($"! {error}");
-}
-
-return 0;

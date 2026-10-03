@@ -71,3 +71,33 @@ dotnet publish src/Cli -c Release -r win-x64 --self-contained false
 ## Self-contained vs framework-dependent
 
 Self-contained публікація містить код застосунку, залежності та копію .NET Runtime для конкретного RID, тому працює без встановленого .NET, але займає значно більше місця. Framework-dependent публікація містить лише код і залежності, тому невелика, але на машині користувача має бути встановлений сумісний .NET 10.
+
+## Лабораторна робота 4: доменна модель Order / OrderLine
+
+Сутності `Order` і `OrderLine` розміщені в `src/Core/Domain`. Record-типи з лаб. 3
+(`src/Core/Dto`) збережені як DTO: вони лише переносять дані, а бізнес-правила
+захищають сутності. Зв'язок між ними: `ToDto()` і `FromDto()`.
+
+### Інваріанти замовлення
+
+1. Ідентифікатор замовлення не порожній: `ArgumentException` (`Order.Create`).
+2. Ідентифікатор клієнта не порожній: `ArgumentException` (`Order.Create`).
+3. Ідентифікатор товару і назва в рядку не порожні: `ArgumentException` (`OrderLine.Create`).
+4. Кількість у рядку більша за нуль: `ArgumentOutOfRangeException` (`OrderLine.Create`).
+5. Ціна не від'ємна: `ArgumentOutOfRangeException` (`OrderLine.Create`).
+6. До підтвердженого замовлення не можна додавати рядки: `InvalidOperationException` (`Order.AddLine`).
+7. Порожнє замовлення не можна підтвердити: `InvalidOperationException` (`Order.Confirm`).
+8. Підтверджене замовлення не можна підтвердити повторно: `InvalidOperationException` (`Order.Confirm`).
+9. Загальна сума обчислюється з рядків і не може бути змінена ззовні (`Order.Total`).
+10. Колекція рядків назовні доступна лише для читання (`IReadOnlyList<OrderLine>`).
+11. `FromDto` відновлює сутність через `Create`, `AddLine` і `Confirm`, тобто з тими самими перевірками.
+12. Товар з імпорту, що порушує інваріанти, не потрапляє в замовлення, а додається до переліку помилок (`OrderImportMapper.ToOrder`).
+
+### Запуск
+
+```
+dotnet run --project src/Cli
+```
+
+Програма показує три сценарії: успішне створення й підтвердження замовлення, порушення
+інваріантів (з виводом `Message` без stack trace) та імпорт товарів у замовлення.
