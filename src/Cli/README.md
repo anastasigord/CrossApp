@@ -101,3 +101,23 @@ dotnet run --project src/Cli
 
 Програма показує три сценарії: успішне створення й підтвердження замовлення, порушення
 інваріантів (з виводом `Message` без stack trace) та імпорт товарів у замовлення.
+
+
+## Лабораторна робота 6: доменні події, делегати, лямбди
+
+`OrderService` піднімає подію `Changed` (`EventHandler<OrderChangedEventArgs>`) після успішних
+`CreateOrder`, `AddLine`, `ConfirmOrder`. Подію піднімає один приватний метод `OnChanged`
+(`Changed?.Invoke(...)`) лише після `Add`/`Update` у сховищі: якщо інваріант кинув виняток,
+події немає. Дані події: `OrderId`, `Kind` (`OrderChangeKind`), `LinesCount`, `Total`, `At`.
+
+Core не містить `Console.WriteLine` і не працює з файлом логу. У Cli два підписники:
+локальний метод `OnOrderChanged` (консоль + `logs/app.log`, його можна зняти через `-=`)
+і лямбда-лічильник `(_, _) => changes++` із замиканням. Лог:
+`Path.Combine(AppContext.BaseDirectory, "logs", "app.log")`, каталог створюється кодом.
+`OrderService.FindAll(Func<Order, bool>)` повертає замовлення за умовою.
+
+Запуск:
+```
+dotnet run --project src/Cli
+dotnet run --project src/Cli -- --file
+```
