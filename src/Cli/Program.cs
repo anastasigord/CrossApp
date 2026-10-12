@@ -13,11 +13,6 @@ Console.OutputEncoding = Encoding.UTF8;
 // ---------- Composition root: вибір сховища через фабрику ----------
 IOrderStore store = StoreFactory.Create(args);
 
-// Те саме без фабрики (для порівняння у звіті):
-// IOrderStore store = args.Contains("--file")
-//     ? new FileOrderStore(Path.Combine(AppContext.BaseDirectory, "data", "orders.json"))
-//     : new InMemoryOrderStore(SampleData.Orders());
-// if (args.Contains("--cache")) store = new CachingOrderStore(store);
 
 var service = new OrderService(store);
 
