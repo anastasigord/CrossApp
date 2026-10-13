@@ -7,16 +7,25 @@ using Core.Events;
 
 namespace Core.Services;
 
-public sealed class OrderService(IOrderStore store)
+// sinks необов'язковий: старий виклик new OrderService(store) працює без змін
+public sealed class OrderService(IOrderStore store, IEnumerable<INotificationSink>? sinks = null)
 {
     private readonly IOrderStore _store = store ?? throw new ArgumentNullException(nameof(store));
+    private readonly INotificationSink[] _sinks = sinks?.ToArray() ?? [];
 
-    // event, а не публічне поле делегата: зовні доступні лише += і -=
+    // Варіант 1: подія (підписники приєднуються ззовні через += / -=)
     public event EventHandler<OrderChangedEventArgs>? Changed;
 
-    // Єдине місце, де піднімається подія
-    private void OnChanged(Order o, OrderChangeKind kind) =>
-        Changed?.Invoke(this, new OrderChangedEventArgs(o.Id, kind, o.Lines.Count, o.Total));
+    // Єдине місце сповіщення: і подія, і sink-и
+    private void OnChanged(Order o, OrderChangeKind kind)
+    {
+        var args = new OrderChangedEventArgs(o.Id, kind, o.Lines.Count, o.Total);
+
+        Changed?.Invoke(this, args);        // подія
+
+        foreach (var sink in _sinks)        // Варіант 2: інтерфейс, переданий через конструктор
+            sink.Notify(args);
+    }
 
     public Order CreateOrder(string customerId)
     {
@@ -29,7 +38,7 @@ public sealed class OrderService(IOrderStore store)
     public Order AddLine(string orderId, string productId, string name, decimal price, int quantity)
     {
         var order = GetOrder(orderId);
-        order.AddLine(productId, name, price, quantity); // інваріанти: при винятку події не буде
+        order.AddLine(productId, name, price, quantity); // інваріанти: при винятку сповіщення не буде
         _store.Update(order);
         OnChanged(order, OrderChangeKind.LineAdded);
         return order;
@@ -38,7 +47,7 @@ public sealed class OrderService(IOrderStore store)
     public Order ConfirmOrder(string orderId)
     {
         var order = GetOrder(orderId);
-        order.Confirm(); // інваріанти: при винятку події не буде
+        order.Confirm(); // інваріанти: при винятку сповіщення не буде
         _store.Update(order);
         OnChanged(order, OrderChangeKind.OrderConfirmed);
         return order;

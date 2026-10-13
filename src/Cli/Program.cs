@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Cli.Sinks;
 using Core.Abstractions;
 using Core.Domain;
 using Core.Events;
+using Core.Import;
 using Core.Services;
 using Core.Storage;
 
@@ -31,7 +33,7 @@ Console.WriteLine();
 // ---------- Лог: шлях через Path.Combine, каталог створюємо кодом ----------
 string logPath = Path.Combine(AppContext.BaseDirectory, "logs", "app.log");
 Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
-File.Delete(logPath); // свіжий лог на кожен запуск (для демонстрації); якщо файлу немає, помилки не буде
+File.Delete(logPath); // свіжий лог на кожен запуск (для демонстрації)
 
 // ---------- Підписник 1: локальний метод (його можна відписати) ----------
 void OnOrderChanged(object? sender, OrderChangedEventArgs e)
@@ -130,6 +132,44 @@ if (store is CachingOrderStore cache)
     service.All(); service.All(); service.All();
     Console.WriteLine("  Нове замовлення додано, кеш скинуто");
     Console.WriteLine($"  Три читання списку підряд: звернень до внутрішнього сховища {cache.InnerListCalls - before}");
+    Console.WriteLine();
+}
+
+// ---------- Додаткові завдання (лише з --extra) ----------
+if (args.Contains("--extra"))
+{
+    // Завдання 1: INotificationSink передається сервісу через конструктор
+    Console.WriteLine("Додаткове завдання 1: INotificationSink (ConsoleSink + FileSink)");
+    string sinkLog = Path.Combine(AppContext.BaseDirectory, "logs", "sinks.log");
+    File.Delete(sinkLog);
+
+    var sinkService = new OrderService(
+        new InMemoryOrderStore(),
+        new INotificationSink[] { new ConsoleSink(), new FileSink(sinkLog) });
+
+    var sinkOrder = sinkService.CreateOrder("C-300");
+    sinkService.AddLine(sinkOrder.Id, "P-1", "Товар", 100m, 2);
+    sinkService.ConfirmOrder(sinkOrder.Id);
+    Console.WriteLine($"  Рядків у {sinkLog}: {File.ReadAllLines(sinkLog).Length}");
+    Console.WriteLine();
+
+    // Завдання 2: Action<string> як параметр методу імпорту
+    Console.WriteLine("Додаткове завдання 2: Action<string> в імпорті");
+    string csvPath = Path.Combine("data", "sample.csv");
+    if (File.Exists(csvPath))
+    {
+        int skippedCount = 0;
+        var imported = CsvImporter.Load(csvPath, message =>
+        {
+            skippedCount++;
+            Console.WriteLine($"  пропущено → {message}");
+        });
+        Console.WriteLine($"  Імпортовано: {imported.Items.Count}, повідомлень через Action: {skippedCount}");
+    }
+    else
+    {
+        Console.WriteLine($"  Файл не знайдено: {Path.GetFullPath(csvPath)} (запускайте з кореня репозиторію)");
+    }
     Console.WriteLine();
 }
 

@@ -13,7 +13,7 @@ public static class CsvImporter
     private const NumberStyles PriceStyles =
         NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign;
 
-    public static ImportResult<ImportRowDto> Load(string path)
+        public static ImportResult<ImportRowDto> Load(string path, Action<string>? onSkipped = null)
     {
         var items = new List<ImportRowDto>();
         var errors = new List<string>();
@@ -34,14 +34,17 @@ public static class CsvImporter
                     items.Add(ok.Value);
                     break;
                 case ParseFailed failed:
-                    errors.Add($"рядок {number}: {failed.Reason}");
+                {
+                    string message = $"рядок {number}: {failed.Reason}";
+                    errors.Add(message);
+                    onSkipped?.Invoke(message); // повідомляємо зовнішній код, не знаючи, що він зробить
                     break;
+                }
             }
         }
 
         return new ImportResult<ImportRowDto>(items, errors);
     }
-
     private static ParseOutcome ParseLine(string line)
     {
         string[] parts = line.Split(Separator, StringSplitOptions.TrimEntries);
