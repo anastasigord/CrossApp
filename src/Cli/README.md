@@ -120,4 +120,60 @@ Core не містить `Console.WriteLine` і не працює з файло�
 ```
 dotnet run --project src/Cli
 dotnet run --project src/Cli -- --file
+
+
+## Лабораторна робота 7: звіти через LINQ
+
+Уся логіка звітів у `src/Core/Reports/ReportService.cs`. Звіти приймають `IEnumerable<Order>`
+і повертають `IReadOnlyList<DTO>` (`OrderReportLine`, `GroupSummary`, `CustomerOrdersSummary`).
+У Cli (`ReportCommands.cs`) лише виклики й форматований вивід. Додано статус замовлення
+(`OrderStatus`: Draft, Confirmed, Cancelled) і розширено `SampleData` до 18 замовлень та 6 клієнтів.
+
+| Команда | Питання | Оператори |
+|---|---|---|
+| `report-top` | Топ-5 замовлень за сумою | OrderByDescending, ThenBy, Take (через `TopBy`), Select |
+| `report-low` | Замовлення дешевші за 1000 грн | Where, OrderBy, ThenBy, Select |
+| `report-groups` | Розподіл за статусом | GroupBy, Count, Sum, OrderByDescending |
+| `report-sum` | Кількість, сума, середнє, максимум | Sum, Average, Max |
+| `demo-deferred` | Відкладене виконання | Where, Count(), ToList() |
+| `report-join` | Клієнти та їхні замовлення | GroupJoin |
+| `report-customers` | Топ-3 клієнти | GroupJoin + `TopBy` |
+| `benchmark` | Stopwatch: ToList усередині ланцюжка чи ні | Where, OrderBy, Take, ToList |
+| `events` | Сценарій ЛР 6 (події) | |
+
+Запуск: `dotnet run --project src/Cli -f net10.0 -- report-top`.
+
+### Коли виконується запит і чому два `Count()` дали різні числа
+
+Рядок `source.Where(ord => ord.Total < 1000m)` лише описує запит і нічого не обчислює.
+Реальна обробка джерела починається під час перебору результату: у `Count()`, `ToList()`, `foreach`.
+У демо перший `query.Count()` порахував 6 малих замовлень. Потім у `source` додали замовлення на 300 грн,
+і другий `query.Count()` повернув 7, бо запит виконався заново над зміненим джерелом.
+`ToList()` зафіксував результат: `snapshot.Count` лишився 7 навіть після `source.Clear()`.
+
+### Методний синтаксис і синтаксис запитів
+
+**Method Syntax (`ByStatus`):**
+
+```csharp
+source
+    .GroupBy(o => o.Status.ToString(), StringComparer.OrdinalIgnoreCase)
+    .Select(g => new GroupSummary(g.Key, g.Count(), g.Sum(o => o.Total)))
+    .OrderByDescending(s => s.TotalAmount)
+    .ToList();
+```
+
+**Query Syntax (`ByStatusQuerySyntax`):**
+
+```csharp
+(from o in source
+ group o by o.Status.ToString() into g
+ orderby g.Sum(x => x.Total) descending
+ select new GroupSummary(g.Key, g.Count(), g.Sum(x => x.Total)))
+.ToList();
+```
+
+Результат однаковий: компілятор переводить синтаксис запитів на виклики методів. Для групування
+запис `group ... into g` читається природніше, а для `Where`, `ThenBy`, `Take` ланцюжок методів
+компактніший. Тому в проєкті основний варіант методний, а запит у синтаксисі `from` зроблено як порівняння.
 ```

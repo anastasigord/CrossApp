@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Cli;
 using Cli.Sinks;
 using Core.Abstractions;
 using Core.Domain;
@@ -13,10 +14,20 @@ using Core.Storage;
 
 Console.OutputEncoding = Encoding.UTF8;
 
+// Назва підкоманди: перший аргумент, що не починається з "--" (щоб --file не став назвою звіту)
+string command = args.FirstOrDefault(a => !a.StartsWith("--")) ?? "report-top";
+
 // ---------- Composition root: вибір сховища через фабрику ----------
 IOrderStore store = StoreFactory.Create(args);
 var service = new OrderService(store);
 
+// ---------- Звіти (ЛР 7): уся логіка в Core, тут лише виклик і вивід ----------
+if (command != "events")
+    return ReportCommands.Run(command, service.All());
+
+// =====================================================================
+// Нижче сценарій ЛР 6 (події). Запускається командою: events
+// =====================================================================
 bool useFile = args.Contains("--file");
 bool useCache = args.Contains("--cache");
 bool useSearch = args.Contains("--search");
@@ -111,11 +122,11 @@ Console.WriteLine();
 
 if (useSearch)
 {
-    string prefix = "ORD-";
+    string prefix = "O-";
     Func<Order, bool> byPrefix = ord => ord.Id.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
     Func<Order, bool> confirmedOnly = ord => ord.IsConfirmed;
 
-    PrintFound("Id починається з ORD-", service.FindAll(byPrefix));
+    PrintFound("Id починається з O-", service.FindAll(byPrefix));
     PrintFound("Лише підтверджені", service.FindAll(confirmedOnly));
     PrintFound("Id починається з NEW- і підтверджене",
         service.FindAll(ord => ord.Id.StartsWith("NEW-", StringComparison.OrdinalIgnoreCase)
@@ -135,10 +146,9 @@ if (store is CachingOrderStore cache)
     Console.WriteLine();
 }
 
-// ---------- Додаткові завдання (лише з --extra) ----------
+// ---------- Додаткові завдання ЛР 6 (лише з --extra) ----------
 if (args.Contains("--extra"))
 {
-    // Завдання 1: INotificationSink передається сервісу через конструктор
     Console.WriteLine("Додаткове завдання 1: INotificationSink (ConsoleSink + FileSink)");
     string sinkLog = Path.Combine(AppContext.BaseDirectory, "logs", "sinks.log");
     File.Delete(sinkLog);
@@ -153,7 +163,6 @@ if (args.Contains("--extra"))
     Console.WriteLine($"  Рядків у {sinkLog}: {File.ReadAllLines(sinkLog).Length}");
     Console.WriteLine();
 
-    // Завдання 2: Action<string> як параметр методу імпорту
     Console.WriteLine("Додаткове завдання 2: Action<string> в імпорті");
     string csvPath = Path.Combine("data", "sample.csv");
     if (File.Exists(csvPath))
@@ -175,6 +184,7 @@ if (args.Contains("--extra"))
 
 Console.WriteLine($"Лог: {logPath}");
 Console.WriteLine($"Рядків у логу: {File.ReadAllLines(logPath).Length}");
+return 0;
 
 static void PrintFound(string title, IReadOnlyList<Order> found)
 {
