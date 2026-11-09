@@ -7,12 +7,13 @@ namespace Core.Storage;
 
 public static class StoreFactory
 {
-    public static IOrderStore Create(string[] args)
+    // filePath приходить із конфігурації (appsettings / змінні середовища)
+    public static IOrderStore Create(string[] args, string? filePath = null)
     {
         ArgumentNullException.ThrowIfNull(args);
 
         IOrderStore store = args.Contains("--file")
-            ? new FileOrderStore(Path.Combine(AppContext.BaseDirectory, "data", "orders.json"))
+            ? new FileOrderStore(filePath ?? Path.Combine(AppContext.BaseDirectory, "data", "orders.json"))
             : new InMemoryOrderStore(SampleData.Orders());
 
         return args.Contains("--cache") ? new CachingOrderStore(store) : store;

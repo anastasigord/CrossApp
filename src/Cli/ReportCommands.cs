@@ -10,9 +10,10 @@ namespace Cli;
 
 public static class ReportCommands
 {
-    public const string Names =
+        public const string Names =
         "report-top | report-low | report-groups | report-sum | demo-deferred | " +
-        "report-join | report-customers | report-empty | benchmark | events | import";
+        "report-join | report-customers | report-empty | benchmark | events | import | config | " +
+        "--import <файл> | --export <файл>";
 
     public static int Run(string command, IReadOnlyList<Order> items)
     {

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using Cli;
 using Cli.Sinks;
+using Core;
 using Core.Abstractions;
 using Core.Domain;
 using Core.Events;
@@ -14,19 +15,69 @@ using Core.Storage;
 
 Console.OutputEncoding = Encoding.UTF8;
 
-// Позиційні аргументи: перший без "--" це команда, другий це шлях (для import)
-var positional = args.Where(a => !a.StartsWith("--")).ToList();
+// Прапорці зі значенням: значення (шлях) не є командою
+var valueFlags = new[] { "--import", "--export" };
+var positional = new List<string>();
+for (int i = 0; i < args.Length; i++)
+{
+    if (valueFlags.Contains(args[i])) { i++; continue; }
+    if (args[i].StartsWith("--")) continue;
+    positional.Add(args[i]);
+}
 string command = positional.FirstOrDefault() ?? "report-top";
+string? importPath = OptionValue(args, "--import");
+string? exportPath = OptionValue(args, "--export");
 
-// ---------- Composition root: вибір сховища через фабрику ----------
-IOrderStore store = StoreFactory.Create(args);
+if ((args.Contains("--import") && importPath is null) || (args.Contains("--export") && exportPath is null))
+{
+    Console.WriteLine("Вкажіть шлях до файлу: --import <файл> або --export <файл>");
+    return 1;
+}
+
+// ---------- Конфігурація (ЛР 9): appsettings, secrets, змінні середовища ----------
+AppSettings settings;
+try
+{
+    settings = AppSettings.Load(args);
+}
+catch (Exception ex) when (ex is FileNotFoundException or InvalidDataException)
+{
+    Console.WriteLine($"Помилка конфігурації: {ex.Message}");
+    return 1;
+}
+
+// ---------- Імпорт / експорт колекції в JSON (ЛР 9) ----------
+if (importPath is not null || exportPath is not null)
+    return await SettingsCommands.RunDataAsync(settings, importPath, exportPath);
+
+// ---------- Composition root: сховище, шлях до файлу з конфігурації ----------
+IOrderStore store = StoreFactory.Create(args, settings.DataFile);
 var service = new OrderService(store);
 
-// ---------- Асинхронний імпорт (ЛР 8): top-level await ----------
+// Зіпсований файл даних: зрозуміле повідомлення замість стектрейсу
+try
+{
+    _ = service.All();
+}
+catch (StorageException ex)
+{
+    Console.WriteLine($"Помилка сховища: {ex.Message}");
+    if (ex.InnerException is not null)
+        Console.WriteLine($"  Причина: {ex.InnerException.Message}");
+    return 1;
+}
+
+if (command == "config")
+{
+    SettingsCommands.PrintSettings(settings, includeLogLevel: true);
+    return 0;
+}
+
+// ---------- Асинхронний імпорт (ЛР 8): команда import ----------
 if (command == "import")
     return await ImportCommand.RunAsync(service, args, positional.Skip(1).FirstOrDefault());
 
-// ---------- Звіти (ЛР 7): уся логіка в Core, тут лише виклик і вивід ----------
+// ---------- Звіти (ЛР 7) ----------
 if (command != "events")
     return ReportCommands.Run(command, service.All());
 
@@ -42,7 +93,7 @@ Console.WriteLine($"Сховище: {store.GetType().Name}");
 if (useCache)
     Console.WriteLine($"Обгортає: {(useFile ? nameof(FileOrderStore) : nameof(InMemoryOrderStore))}");
 if (useFile)
-    Console.WriteLine($"Файл: {Path.Combine(AppContext.BaseDirectory, "data", "orders.json")}");
+    Console.WriteLine($"Файл: {settings.DataFile}");
 Console.WriteLine($"Замовлень у сховищі на старті: {service.All().Count}");
 Console.WriteLine();
 
@@ -191,6 +242,12 @@ Console.WriteLine($"Лог: {logPath}");
 Console.WriteLine($"Рядків у логу: {File.ReadAllLines(logPath).Length}");
 return 0;
 
+static string? OptionValue(string[] a, string name)
+{
+    int idx = Array.IndexOf(a, name);
+    return idx >= 0 && idx + 1 < a.Length && !a[idx + 1].StartsWith("--") ? a[idx + 1] : null;
+}
+
 static void PrintFound(string title, IReadOnlyList<Order> found)
 {
     Console.WriteLine($"  {title}: {found.Count}");
@@ -209,4 +266,4 @@ static void TryDo(string title, Action action)
     {
         Console.WriteLine($"  {title}: {ex.GetType().Name} — {ex.Message}");
     }
-}   
+}

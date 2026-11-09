@@ -2,17 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 using Core.Abstractions;
 using Core.Domain;
-using Core.Dto;
 
 namespace Core.Storage;
 
 public sealed class FileOrderStore(string path) : IOrderStore
 {
-    private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
-
     private readonly Dictionary<string, Order> _cache = new(StringComparer.OrdinalIgnoreCase);
     private readonly string _path = Path.GetFullPath(path);
     private bool _loaded;
@@ -21,25 +17,13 @@ public sealed class FileOrderStore(string path) : IOrderStore
     {
         if (_loaded) return;
 
-        if (File.Exists(_path))
-        {
-            var dtos = JsonSerializer.Deserialize<List<OrderDto>>(File.ReadAllText(_path))
-                       ?? new List<OrderDto>();
-            foreach (var dto in dtos)
-            {
-                var order = Order.FromDto(dto); // ті самі перевірки, що й у домені
-                _cache[order.Id] = order;
-            }
-        }
-        _loaded = true;
+        foreach (var order in JsonOrderFile.Load(_path))   // ті самі перевірки, що й у домені
+            _cache[order.Id] = order;
+
+        _loaded = true;   // лише після успішного читання
     }
 
-    private void Flush()
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-        File.WriteAllText(_path,
-            JsonSerializer.Serialize(_cache.Values.Select(o => o.ToDto()).ToList(), Options));
-    }
+    private void Flush() => JsonOrderFile.Save(_path, _cache.Values);
 
     public IReadOnlyList<Order> List()
     {
