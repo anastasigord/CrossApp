@@ -211,3 +211,53 @@ dotnet test --collect:"XPlat Code Coverage"
 Проєкт `tests/Core.Tests` посилається лише на Core, використовує `InMemoryOrderStore`, `TestData.Items()`
 і `FakeImporter`; диск потрібен лише одному тесту (тимчасовий файл у `Path.GetTempPath()`, який
 видаляється у `finally`).
+
+
+## Лабораторна робота 9: шляхи, JSON, конфігурація, secrets
+
+**Порядок джерел конфігурації** (пізніше перекриває раніше):
+`appsettings.json` → `appsettings.{Environment}.json` → user-secrets → змінні середовища `CROSSAPP_*` → аргументи командного рядка.
+Проста змінна `CROSSAPP_DATA_PATH` перекриває шлях даних із файлу.
+
+| Ключ | Значення за замовчуванням | Змінна середовища |
+|---|---|---|
+| `Storage:DataPath` | `data` | `CROSSAPP_Storage__DataPath` або `CROSSAPP_DATA_PATH` |
+| `Storage:FileName` | `orders.json` | `CROSSAPP_Storage__FileName` |
+| `Orders:Currency` | `UAH` | `CROSSAPP_Orders__Currency` |
+| `Logging:MinimumLevel` | `Information` | `CROSSAPP_Logging__MinimumLevel` |
+| `Integration:ApiKey` | (секрет, не в Git) | `CROSSAPP_Integration__ApiKey` |
+| профіль | `Development` | `CROSSAPP_ENVIRONMENT` |
+
+Відносний `DataPath` відраховується від `AppContext.BaseDirectory`, тому файл даних один і той самий
+із будь-якого робочого каталогу.
+
+| Профіль | Рівень логу | Каталог даних |
+|---|---|---|
+| Development | Debug | `data` |
+| Production | Warning | `data-prod` |
+
+**Секрет** зберігається поза репозиторієм:
+```
+dotnet user-secrets init --project src/Cli
+dotnet user-secrets set "Integration:ApiKey" "local-dev-key" --project src/Cli
+dotnet user-secrets list --project src/Cli
+```
+Windows: `%APPDATA%\Microsoft\UserSecrets\<UserSecretsId>\secrets.json`.
+Linux/macOS: `~/.microsoft/usersecrets/<UserSecretsId>/secrets.json`.
+
+**Перевизначення.**
+PowerShell:
+```
+$env:CROSSAPP_DATA_PATH = "$env:TEMP\crossapp-data"
+$env:CROSSAPP_Orders__Currency = "USD"
+$env:CROSSAPP_ENVIRONMENT = "Production"
+```
+bash:
+```
+CROSSAPP_DATA_PATH=/tmp/data dotnet run --project src/Cli -- config
+CROSSAPP_Orders__Currency=USD dotnet run --project src/Cli -- config
+```
+
+**Команди:** `config` (параметри), `export [файл]` (уся колекція в JSON), `import [файл]` (ЛР 8).
+Запис JSON атомарний: спочатку `orders.json.tmp`, потім `File.Move(..., overwrite: true)`.
+Кирилиця зберігається без екранування (`UnsafeRelaxedJsonEscaping`).
