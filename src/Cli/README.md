@@ -176,4 +176,38 @@ source
 Результат однаковий: компілятор переводить синтаксис запитів на виклики методів. Для групування
 запис `group ... into g` читається природніше, а для `Where`, `ThenBy`, `Take` ланцюжок методів
 компактніший. Тому в проєкті основний варіант методний, а запит у синтаксисі `from` зроблено як порівняння.
+
+
+## Лабораторна робота 8: async/await, скасування, винятки, тести
+
+**Імпорт.** `OrderService.ImportAsync(importer, path, ct, progress)` читає замовлення з JSON через
+`IOrderImporter` (`JsonOrderImporter`: `FileStream(useAsync: true)` + `DeserializeAsync`).
+Токен скасування передається Cli → `ImportAsync` → `LoadAsync` і перевіряється в циклі.
+Імпорт ідемпотентний: замовлення, яке вже є в сховищі, пропускається. Для кожного доданого
+піднімається подія `Changed`.
+
+**Помилки.** `DomainException`: порушення бізнес-правил (змінити підтверджене замовлення,
+підтвердити порожнє, зіпсований запис у файлі з номером запису). `ArgumentException`: некоректні
+аргументи. `StorageException`: технічні помилки формату файлу, початковий виняток у `InnerException`.
+`OperationCanceledException` обробляється окремим першим `catch` і не вважається помилкою.
+
+**Запуск імпорту:**
 ```
+dotnet run --project src/Cli -f net10.0 -- import
+dotnet run --project src/Cli -f net10.0 -- import --stream
+dotnet run --project src/Cli -f net10.0 -- import data/orders-broken.json
+dotnet run --project src/Cli -f net10.0 -- import non_existent.json
+```
+
+**Як перевірити скасування:**
+- Ctrl+C: `dotnet .\src\Cli\bin\Debug\net10.0\Cli.dll import --slow`, натиснути Ctrl+C через 1-2 с.
+- Таймаут: `dotnet run --project src/Cli -f net10.0 -- import --timeout` (скасування через 1 с).
+
+**Тести:**
+```
+dotnet test
+dotnet test --collect:"XPlat Code Coverage"
+```
+Проєкт `tests/Core.Tests` посилається лише на Core, використовує `InMemoryOrderStore`, `TestData.Items()`
+і `FakeImporter`; диск потрібен лише одному тесту (тимчасовий файл у `Path.GetTempPath()`, який
+видаляється у `finally`).

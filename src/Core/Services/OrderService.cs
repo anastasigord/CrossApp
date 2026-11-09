@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Core.Abstractions;
 using Core.Domain;
 using Core.Events;
@@ -13,7 +15,7 @@ public sealed class OrderService(IOrderStore store, IEnumerable<INotificationSin
     private readonly IOrderStore _store = store ?? throw new ArgumentNullException(nameof(store));
     private readonly INotificationSink[] _sinks = sinks?.ToArray() ?? [];
 
-    // Варіант 1: подія (підписники приєднуються ззовні через += / -=)
+    // event, а не публічне поле: ззовні лише += і -=
     public event EventHandler<OrderChangedEventArgs>? Changed;
 
     // Єдине місце сповіщення: і подія, і sink-и
@@ -21,9 +23,9 @@ public sealed class OrderService(IOrderStore store, IEnumerable<INotificationSin
     {
         var args = new OrderChangedEventArgs(o.Id, kind, o.Lines.Count, o.Total);
 
-        Changed?.Invoke(this, args);        // подія
+        Changed?.Invoke(this, args);
 
-        foreach (var sink in _sinks)        // Варіант 2: інтерфейс, переданий через конструктор
+        foreach (var sink in _sinks)
             sink.Notify(args);
     }
 
@@ -53,16 +55,71 @@ public sealed class OrderService(IOrderStore store, IEnumerable<INotificationSin
         return order;
     }
 
+    // Імпорт: токен передається в LoadAsync і перевіряється в циклі.
+    // Ідемпотентність: замовлення, яке вже є в сховищі, пропускається.
+    public async Task<int> ImportAsync(
+        IOrderImporter importer, string path,
+        CancellationToken ct = default, IProgress<int>? progress = null)
+    {
+        ArgumentNullException.ThrowIfNull(importer);
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        var items = await importer.LoadAsync(path, ct);
+
+        var added = 0;
+        var processed = 0;
+        foreach (var item in items)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (_store.GetById(item.Id) is null)
+            {
+                _store.Add(item);
+                OnChanged(item, OrderChangeKind.OrderCreated); // подія для кожного доданого
+                added++;
+            }
+
+            processed++;
+            progress?.Report(processed * 100 / items.Count); // відсотки
+        }
+        return added;
+    }
+
+    // Потоковий імпорт: загальна кількість невідома, тому прогрес = кількість оброблених
+    public async Task<int> ImportStreamAsync(
+        IOrderImporter importer, string path,
+        CancellationToken ct = default, IProgress<int>? progress = null)
+    {
+        ArgumentNullException.ThrowIfNull(importer);
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        var added = 0;
+        var processed = 0;
+        await foreach (var item in importer.StreamAsync(path, ct).WithCancellation(ct))
+        {
+            if (_store.GetById(item.Id) is null)
+            {
+                _store.Add(item);
+                OnChanged(item, OrderChangeKind.OrderCreated);
+                added++;
+            }
+
+            processed++;
+            progress?.Report(processed);
+        }
+        return added;
+    }
+
     public IReadOnlyList<Order> All() => _store.List();
 
     // Нормальна відсутність запису: повертає null
     public Order? Find(string id) => _store.GetById(id);
 
-    // Відсутність запису як помилка сценарію
+    // Відсутність запису як порушення бізнес-правила
     public Order GetOrder(string id) =>
-        _store.GetById(id) ?? throw new InvalidOperationException($"Немає замовлення з id={id}.");
+        _store.GetById(id) ?? throw new DomainException($"Немає замовлення з id={id}.");
 
-    // Func: критерій пошуку задає той, хто викликає, а значення повертається у відповідь
+    // Func: критерій пошуку задає той, хто викликає
     public IReadOnlyList<Order> FindAll(Func<Order, bool> predicate)
     {
         ArgumentNullException.ThrowIfNull(predicate);

@@ -46,10 +46,10 @@ public sealed class Order
     public void AddLine(string productId, string name, decimal price, int quantity)
     {
         if (IsConfirmed)
-            throw new InvalidOperationException(
+            throw new DomainException(
                 $"Замовлення {Id} вже підтверджене, рядки додавати не можна");
         if (Status == OrderStatus.Cancelled)
-            throw new InvalidOperationException(
+            throw new DomainException(
                 $"Замовлення {Id} скасоване, рядки додавати не можна");
 
         var line = OrderLine.Create(productId, name, price, quantity);
@@ -60,13 +60,13 @@ public sealed class Order
     public void Confirm()
     {
         if (IsConfirmed)
-            throw new InvalidOperationException(
+            throw new DomainException(
                 $"Замовлення {Id} вже підтверджене");
         if (Status == OrderStatus.Cancelled)
-            throw new InvalidOperationException(
+            throw new DomainException(
                 $"Замовлення {Id} скасоване, підтвердити не можна");
         if (_lines.Count == 0)
-            throw new InvalidOperationException(
+            throw new DomainException(
                 $"Не можна підтвердити порожнє замовлення {Id}: немає жодного рядка");
 
         Status = OrderStatus.Confirmed;
@@ -75,7 +75,7 @@ public sealed class Order
     public void Cancel()
     {
         if (Status == OrderStatus.Cancelled)
-            throw new InvalidOperationException(
+            throw new DomainException(
                 $"Замовлення {Id} вже скасоване");
 
         Status = OrderStatus.Cancelled;

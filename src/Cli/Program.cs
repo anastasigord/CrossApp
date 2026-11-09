@@ -14,12 +14,17 @@ using Core.Storage;
 
 Console.OutputEncoding = Encoding.UTF8;
 
-// Назва підкоманди: перший аргумент, що не починається з "--" (щоб --file не став назвою звіту)
-string command = args.FirstOrDefault(a => !a.StartsWith("--")) ?? "report-top";
+// Позиційні аргументи: перший без "--" це команда, другий це шлях (для import)
+var positional = args.Where(a => !a.StartsWith("--")).ToList();
+string command = positional.FirstOrDefault() ?? "report-top";
 
 // ---------- Composition root: вибір сховища через фабрику ----------
 IOrderStore store = StoreFactory.Create(args);
 var service = new OrderService(store);
+
+// ---------- Асинхронний імпорт (ЛР 8): top-level await ----------
+if (command == "import")
+    return await ImportCommand.RunAsync(service, args, positional.Skip(1).FirstOrDefault());
 
 // ---------- Звіти (ЛР 7): уся логіка в Core, тут лише виклик і вивід ----------
 if (command != "events")
@@ -204,4 +209,4 @@ static void TryDo(string title, Action action)
     {
         Console.WriteLine($"  {title}: {ex.GetType().Name} — {ex.Message}");
     }
-}
+}   

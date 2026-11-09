@@ -1,0 +1,17 @@
+[
+  { "id": "I-001", "customerId": "C-001", "isConfirmed": false, "status": "Draft",     "lines": [ { "productId": "P-301", "name": "Кабель HDMI", "price": 120, "quantity": 2 } ] },
+  { "id": "I-002", "customerId": "C-002", "isConfirmed": true,  "status": "Confirmed", "lines": [ { "productId": "P-302", "name": "Мишка USB", "price": 350, "quantity": 1 }, { "productId": "P-303", "name": "Килимок для миші", "price": 150, "quantity": 1 } ] },
+  { "id": "I-003", "customerId": "C-003", "isConfirmed": false, "status": "Draft",     "lines": [ { "productId": "P-304", "name": "Флешка 128 ГБ", "price": 480, "quantity": 3 } ] },
+  { "id": "I-004", "customerId": "C-004", "isConfirmed": true,  "status": "Confirmed", "lines": [ { "productId": "P-305", "name": "Монітор 27 дюймів", "price": 7200, "quantity": 1 } ] },
+  { "id": "I-005", "customerId": "C-005", "isConfirmed": false, "status": "Draft",     "lines": [ { "productId": "P-306", "name": "Клавіатура", "price": 890, "quantity": 1 }, { "productId": "P-307", "name": "Навушники", "price": 1250, "quantity": 1 } ] },
+  { "id": "I-006", "customerId": "C-006", "isConfirmed": false, "status": "Cancelled", "lines": [ { "productId": "P-308", "name": "Веб-камера", "price": 1650, "quantity": 2 } ] },
+  { "id": "I-007", "customerId": "C-001", "isConfirmed": true,  "status": "Confirmed", "lines": [ { "productId": "P-309", "name": "Роутер", "price": 1430, "quantity": 1 } ] },
+  { "id": "I-008", "customerId": "C-002", "isConfirmed": false, "status": "Draft",     "lines": [ { "productId": "P-310", "name": "Зарядка 65W", "price": 780, "quantity": 2 } ] },
+  { "id": "I-009", "customerId": "C-003", "isConfirmed": false, "status": "Draft",     "lines": [ { "productId": "P-311", "name": "Хаб USB-C", "price": 540, "quantity": 1 } ] },
+  { "id": "I-010", "customerId": "C-004", "isConfirmed": true,  "status": "Confirmed", "lines": [ { "productId": "P-312", "name": "SSD 1 ТБ", "price": 3200, "quantity": 1 }, { "productId": "P-313", "name": "Кабель SATA", "price": 90, "quantity": 2 } ] },
+  { "id": "I-011", "customerId": "C-005", "isConfirmed": false, "status": "Draft",     "lines": [ { "productId": "P-314", "name": "Колонки", "price": 1100, "quantity": 1 } ] },
+  { "id": "I-012", "customerId": "C-006", "isConfirmed": false, "status": "Draft",     "lines": [ { "productId": "P-315", "name": "Мікрофон", "price": 1750, "quantity": 1 } ] },
+  { "id": "I-013", "customerId": "C-001", "isConfirmed": true,  "status": "Confirmed", "lines": [ { "productId": "P-316", "name": "Лампа настільна", "price": 650, "quantity": 2 } ] },
+  { "id": "I-014", "customerId": "C-002", "isConfirmed": false, "status": "Draft",     "lines": [ { "productId": "P-317", "name": "Підставка для ноутбука", "price": 920, "quantity": 1 } ] },
+  { "id": "I-015", "customerId": "C-003", "isConfirmed": true,  "status": "Confirmed", "lines": [ { "productId": "P-318", "name": "Powerbank", "price": 1300, "quantity": 1 } ] }
+]
